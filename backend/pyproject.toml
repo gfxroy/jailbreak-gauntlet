@@ -2,7 +2,6 @@
 name = "jailbreak-gauntlet"
 version = "0.1.0"
 description = "A prompt-injection CTF game and research harness for LLM defenses."
-readme = "../README.md"
 license = { text = "MIT" }
 authors = [{ name = "Aaditya Roy" }]
 requires-python = ">=3.11"
