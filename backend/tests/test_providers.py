@@ -141,3 +141,80 @@ def test_parse_json_object_is_lenient(raw):
 def test_parse_json_object_rejects_garbage(raw):
     with pytest.raises(ValueError):
         parse_json_object(raw)
+
+
+def _gemini_429(delay: str):
+    request = httpx.Request("POST", "https://example.test/chat/completions")
+    body = {
+        "code": 429,
+        "message": f"Quota exceeded for metric ... Please retry in {delay}s.",
+        "status": "RESOURCE_EXHAUSTED",
+    }
+    return RateLimitError(
+        f"Error code: 429 - {body}", response=httpx.Response(429, request=request), body=body
+    )
+
+
+def test_retry_after_parses_gemini_retry_info():
+    from app.providers.openai_provider import retry_after_seconds
+
+    assert retry_after_seconds(_gemini_429("29.93")) == pytest.approx(29.93)
+    request = httpx.Request("POST", "https://example.test")
+    exc = RateLimitError(
+        "x",
+        response=httpx.Response(429, request=request, headers={"retry-after": "7"}),
+        body=None,
+    )
+    assert retry_after_seconds(exc) == 7
+    assert retry_after_seconds(_http_error(RateLimitError, 429)) is None
+
+
+async def test_long_server_requested_wait_fails_fast_then_falls_back():
+    provider, calls = make(
+        _gemini_429("3600"), "from fallback", fallback_models=["backup-model"], max_retry_wait=5
+    )
+    assert await provider.complete([ChatMessage("user", "x")]) == "from fallback"
+    assert [c["model"] for c in calls.calls] == ["guard-model", "backup-model"]
+
+
+async def test_retired_model_404_falls_back():
+    from openai import NotFoundError
+
+    provider, calls = make(_http_error(NotFoundError, 404), "ok", fallback_models=["new-model"])
+    assert await provider.complete([ChatMessage("user", "x")]) == "ok"
+    assert calls.calls[-1]["model"] == "new-model"
+    await provider.complete([ChatMessage("user", "y")])
+    assert [c["model"] for c in calls.calls] == ["guard-model", "new-model", "new-model"]
+
+
+async def test_no_fallback_for_client_errors():
+    provider, calls = make(_http_error(BadRequestError, 400), fallback_models=["other"])
+    with pytest.raises(ProviderError):
+        await provider.complete([ChatMessage("user", "x")])
+    assert {c["model"] for c in calls.calls} == {"guard-model"}
+
+
+async def test_model_rejecting_reasoning_effort_is_retried_without_it():
+    request = httpx.Request("POST", "https://example.test")
+    rejected = BadRequestError(
+        "Thinking level MINIMAL is not supported for this model.",
+        response=httpx.Response(400, request=request),
+        body=None,
+    )
+    provider, calls = make(rejected, "ok", "ok", reasoning_effort="minimal", base_url=GEMINI)
+    assert await provider.complete([ChatMessage("user", "x")]) == "ok"
+    assert "reasoning_effort" in calls.calls[0] and "reasoning_effort" not in calls.calls[1]
+    await provider.complete([ChatMessage("user", "y")])
+    assert "reasoning_effort" not in calls.calls[2]  # remembered per model
+
+
+def test_factory_parses_fallback_models():
+    settings = Settings(
+        openai_api_key="k",
+        openai_base_url=GEMINI,
+        openai_fallback_models=" gemini-a , ,gemini-b",
+        _env_file=None,
+    )
+    provider = build_provider(settings)
+    assert isinstance(provider, OpenAIProvider)
+    assert provider._fallbacks == ["gemini-a", "gemini-b"]

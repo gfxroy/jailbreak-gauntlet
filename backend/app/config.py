@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     openai_reasoning_effort: str | None = None
     # Ask for JSON mode on judge/parser/labeler calls. Disable for endpoints without it.
     openai_json_mode: bool = True
-    openai_max_retries: int = 4
+    openai_max_retries: int = 2  # SDK-level retries (our own retry loop sits on top)
+    openai_fallback_models: str | None = None  # comma-separated, tried when a model fails
+    openai_max_retry_wait: float = 20.0  # longest server-requested wait we honour per retry
     openai_timeout_seconds: float = 45.0
 
     # "production" hardens the app for a public demo (see README > Deploying).
@@ -76,6 +78,7 @@ class Settings(BaseSettings):
         "openai_quarantine_model",
         "openai_labeler_model",
         "openai_reasoning_effort",
+        "openai_fallback_models",
         "database_url",
         "static_dir",
         mode="before",

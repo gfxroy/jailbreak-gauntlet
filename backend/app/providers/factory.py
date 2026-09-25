@@ -21,11 +21,15 @@ def build_provider(settings: Settings) -> ChatProvider:
                 "quarantine": settings.openai_quarantine_model,
                 "classifier": settings.openai_labeler_model,
             },
+            fallback_models=[
+                m.strip() for m in (settings.openai_fallback_models or "").split(",") if m.strip()
+            ],
             base_url=settings.openai_base_url,
             max_tokens=settings.openai_max_tokens,
             reasoning_effort=settings.openai_reasoning_effort,
             json_mode=settings.openai_json_mode,
             max_retries=settings.openai_max_retries,
             timeout=settings.openai_timeout_seconds,
+            max_retry_wait=settings.openai_max_retry_wait,
         )
     return MockProvider()
