@@ -228,3 +228,9 @@ async def test_dual_llm_handles_invalid_json(make_ctx):
 
 def test_sanitize_topic():
     assert sanitize_topic("a<b>c\n\n  d" + "x" * 500) == ("a b c d" + "x" * 500)[:100]
+
+
+async def test_judge_accepts_fenced_json(make_ctx):
+    provider = guard("fine", judge='```json\n{"verdict": "ALLOW", "reason": "ok"}\n```')
+    result = await Pipeline([LLMJudge()], DirectResponder()).run(make_ctx("x", provider=provider))
+    assert not result.blocked

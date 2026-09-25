@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import re
 import unicodedata
 from enum import StrEnum
 
 from app.defenses import text as T
 from app.providers.base import ChatMessage, ChatProvider
+from app.providers.jsonutil import parse_json_object
 
 
 class Technique(StrEnum):
@@ -140,7 +140,7 @@ async def classify_llm(prompt: str, provider: ChatProvider) -> list[Technique]:
             purpose="classifier",
             json_mode=True,
         )
-        values = json.loads(raw).get("techniques", [])
+        values = parse_json_object(raw).get("techniques", [])
     except Exception:  # labeler is best-effort and must never break a chat turn
         return []
     valid = {t.value for t in Technique}

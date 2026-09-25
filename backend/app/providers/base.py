@@ -13,6 +13,10 @@ Role = Literal["system", "user", "assistant"]
 Purpose = Literal["guard", "judge", "quarantine", "classifier"]
 
 
+class ProviderError(RuntimeError):
+    """The model backend failed after retries (quota, outage, bad request...)."""
+
+
 @dataclass(frozen=True, slots=True)
 class ChatMessage:
     role: Role

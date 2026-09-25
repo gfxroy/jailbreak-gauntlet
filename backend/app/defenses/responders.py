@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import re
 from typing import ClassVar, Literal
 
 from app.defenses.base import GuardContext, GuardResult, Responder
 from app.providers.base import ChatMessage
+from app.providers.jsonutil import parse_json_object
 
 
 class DirectResponder(Responder):
@@ -73,11 +73,11 @@ class DualLLMResponder(Responder):
             json_mode=True,
         )
         try:
-            data = json.loads(raw)
-            intent_raw = str(data.get("intent", "other"))
-            topic = sanitize_topic(str(data.get("topic", "")))
-        except (json.JSONDecodeError, AttributeError):
+            data = parse_json_object(raw)
+        except ValueError:
             return "other", ""
+        intent_raw = str(data.get("intent", "other")).strip().lower()
+        topic = sanitize_topic(str(data.get("topic", "")))
         intent: Intent = next((i for i in _INTENTS if i == intent_raw), "other")
         return intent, topic
 

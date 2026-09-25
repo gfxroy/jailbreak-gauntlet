@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from typing import ClassVar
 
 from app.defenses.base import Defense, GuardContext, GuardResult, Handler
 from app.providers.base import ChatMessage
+from app.providers.jsonutil import parse_json_object
 
 JUDGE_PROMPT = """\
 You are a strict security reviewer for a password-guarding assistant.
@@ -37,11 +37,11 @@ class LLMJudge(Defense):
         ]
         raw = await ctx.provider.complete(messages, purpose="judge", json_mode=True)
         try:
-            data = json.loads(raw)
-            verdict = str(data.get("verdict", "block")).lower()
-            reason = str(data.get("reason", ""))
-        except (json.JSONDecodeError, AttributeError):
+            data = parse_json_object(raw)
+        except ValueError:
             return False, "judge returned an invalid verdict (fail closed)"
+        verdict = str(data.get("verdict", "block")).strip().lower()
+        reason = str(data.get("reason", "")).strip() or "no reason given"
         return verdict == "allow", reason
 
     async def __call__(self, ctx: GuardContext, call_next: Handler) -> GuardResult:
