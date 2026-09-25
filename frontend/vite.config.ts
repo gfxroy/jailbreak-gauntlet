@@ -6,6 +6,8 @@ import tailwindcss from "@tailwindcss/vite";
 const apiTarget = process.env.VITE_API_PROXY ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
+  // GitHub Pages serves the static build from /jailbreak-gauntlet/.
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

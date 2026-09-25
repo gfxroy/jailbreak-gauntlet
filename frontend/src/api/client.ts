@@ -56,7 +56,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 const post = <T>(path: string, body: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body) });
 
-export const api = {
+const remoteApi = {
   health: () => request<Health>("/health"),
   createSession: (nickname: string) => post<Session>("/sessions", { nickname }),
   levels: () => request<Level[]>("/levels"),
@@ -70,4 +70,34 @@ export const api = {
     request<ResearchSummary>(`/research/summary?include_synthetic=${includeSynthetic}`),
   exportUrl: (includeSynthetic: boolean) =>
     `/api/research/export.jsonl?include_synthetic=${includeSynthetic}`,
+};
+
+/** Static (GitHub Pages) build: no backend, everything runs in the browser. */
+export const STATIC = import.meta.env.VITE_STATIC === "1";
+
+function wrapLocal<T extends Record<string, (...args: never[]) => Promise<unknown>>>(impl: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [name, fn] of Object.entries(impl)) {
+    out[name] = async (...args: never[]) => {
+      try {
+        return await fn(...args);
+      } catch (e) {
+        const status = (e as { status?: number }).status ?? 500;
+        throw new ApiError(status, (e as Error).message);
+      }
+    };
+  }
+  return out as T;
+}
+
+const local = STATIC ? wrapLocal((await import("../engine/localApi")).localApi) : null;
+
+export const api = {
+  ...remoteApi,
+  ...(local ?? {}),
+  exportJsonl: async (includeSynthetic: boolean): Promise<string> => {
+    if (local) return local.exportJsonl(includeSynthetic);
+    const res = await fetch(remoteApi.exportUrl(includeSynthetic));
+    return res.text();
+  },
 };

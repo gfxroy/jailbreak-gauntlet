@@ -9,6 +9,8 @@ hardened prompts, input and output filters, an LLM judge, canary tokens, a dual-
 and finally all of them stacked. Your job is to get the password out anyway, then read why the
 defense failed.
 
+**[▶ Live demo](https://gfxroy.github.io/jailbreak-gauntlet/)** · static edition, runs entirely in your browser
+
 [![CI](https://github.com/gfxroy/jailbreak-gauntlet/actions/workflows/ci.yml/badge.svg)](https://github.com/gfxroy/jailbreak-gauntlet/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688)
@@ -234,6 +236,27 @@ In that synthetic sample you can see the intended curve: overrides and role-play
 level 1; encodings work at level 2 until the output filter arrives at level 4; payload splitting
 and semantic hints are what still get through at levels 5–8. That pattern mostly reflects how the
 mock was scripted. The interesting data is what you collect in **live mode** with real players.
+
+## Static edition (GitHub Pages)
+
+The [live demo](https://gfxroy.github.io/jailbreak-gauntlet/) is a backend-free build of the
+same game. The level pipelines, defenses, mock guard, technique classifier and dashboard stats
+are ported to TypeScript (`frontend/src/engine/`). Level texts and the word bank are generated
+from the Python source (`backend/scripts/export_static_data.py`, drift-checked by a test).
+
+- **Demo mode by default:** offline mock guard.
+- **Bring your own key:** open the **model ▾** menu to use Gemini or OpenAI. Requests go
+  straight from your browser to the provider. The key is kept in `sessionStorage` for this
+  tab only and is never part of the build.
+- **Local data:** the attack log, leaderboard and dashboard use `localStorage` (this browser
+  only). JSONL export is redacted. A synthetic sample (mock-generated, clearly labelled) can
+  be toggled on.
+- **Not secure, by design:** the passwords live in the page, so anyone can read them in
+  devtools. The static edition is for play and learning. The FastAPI server version keeps
+  secrets server-side and is the one to use for real experiments.
+
+Build it with `npm run build:static` (Vite `base=/jailbreak-gauntlet/`, hash routing).
+`.github/workflows/pages.yml` deploys it on every push to `main`.
 
 ## Quickstart
 

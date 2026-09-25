@@ -33,3 +33,4 @@ coverage/
 .vscode/
 playwright-report/
 test-results/
+dist-static/

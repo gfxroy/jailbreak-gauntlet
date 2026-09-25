@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { api } from "../api/client";
+import { api, STATIC } from "../api/client";
 import type { Outcome } from "../api/types";
 import { Heatmap } from "../components/Heatmap";
 import { DownloadIcon } from "../components/Icons";
@@ -63,7 +63,22 @@ export function Dashboard() {
         </div>
         <div className="flex items-center gap-4">
           <Toggle checked={includeSynthetic} onChange={setIncludeSynthetic} label="include synthetic data" />
-          <a className="btn-ghost" href={api.exportUrl(includeSynthetic)} download>
+          <a
+            className="btn-ghost"
+            href={STATIC ? "#" : api.exportUrl(includeSynthetic)}
+            download="gauntlet-attacks.jsonl"
+            onClick={async (e) => {
+              if (!STATIC) return;
+              e.preventDefault();
+              const text = await api.exportJsonl(includeSynthetic);
+              const url = URL.createObjectURL(new Blob([text], { type: "application/x-ndjson" }));
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "gauntlet-attacks.jsonl";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
             <DownloadIcon width={15} height={15} /> Export JSONL
           </a>
         </div>

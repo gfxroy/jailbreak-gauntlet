@@ -2,7 +2,8 @@ import { NavLink, Outlet } from "react-router-dom";
 import clsx from "clsx";
 import { useSession } from "../hooks/session";
 import { useAsync } from "../hooks/useAsync";
-import { api } from "../api/client";
+import { api, STATIC } from "../api/client";
+import { ModelMenu } from "./ModelMenu";
 import { ChartIcon, InfoIcon, ShieldIcon, TerminalIcon, TrophyIcon } from "./Icons";
 
 const links = [
@@ -58,7 +59,7 @@ export function Layout() {
                     ? "border-amber-glow/40 text-amber-glow"
                     : "border-neon-400/40 text-neon-400",
                 )}
-                title={demo ? "No OPENAI_API_KEY: using the offline mock guard" : health.model ?? ""}
+                title={demo ? "Offline mock guard" : health.model ?? ""}
               >
                 <span
                   className={clsx(
@@ -69,6 +70,7 @@ export function Layout() {
                 {demo ? "DEMO MODE · mock guard" : `LIVE · ${health.model}`}
               </span>
             )}
+            {STATIC && <ModelMenu />}
             {session && (
               <button onClick={reset} className="text-ink-400 hover:text-alert-400" title="Start over">
                 {session.nickname} · reset
@@ -77,6 +79,13 @@ export function Layout() {
           </div>
         </div>
       </header>
+      {STATIC && (
+        <div className="border-b border-amber-glow/20 bg-amber-glow/5 px-5 py-2 text-center font-mono text-[11px] text-amber-glow">
+          Static edition: everything runs in your browser, so the passwords are visible in devtools
+          and stats are stored only in this browser. It's for play and learning. The{" "}
+          <a className="underline" href="https://github.com/gfxroy/jailbreak-gauntlet#quickstart">server version</a> keeps secrets server-side.
+        </div>
+      )}
       <main className="mx-auto max-w-7xl px-5 py-8">
         <Outlet />
       </main>
