@@ -1,0 +1,54 @@
+# Single-container production image (frontend + API on one port), e.g. for
+# Hugging Face Spaces (Docker SDK). Build from the repo root:
+#   docker build -f Dockerfile.space -t jailbreak-gauntlet .
+#   docker run -p 7860:7860 -e OPENAI_API_KEY=... jailbreak-gauntlet
+# See deploy/huggingface/DEPLOY.md.
+
+# ---- 1. build the frontend -------------------------------------------------
+FROM node:22-alpine AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# ---- 2. runtime ---------------------------------------------------------------
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Hugging Face runs containers as uid 1000.
+RUN useradd --create-home --uid 1000 app
+WORKDIR /app
+
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
+COPY backend/scripts ./scripts
+RUN pip install .
+COPY --from=frontend /build/dist ./static
+
+# Production defaults; every value can be overridden with Space variables/secrets.
+# The API key is NOT baked in: set OPENAI_API_KEY as a secret (empty = offline demo).
+ENV APP_ENV=production \
+    STATIC_DIR=/app/static \
+    PORT=7860 \
+    TRUSTED_PROXY_HOPS=1 \
+    USAGE_LIMITS=auto \
+    VISITOR_MAX_MESSAGES=15 \
+    VISITOR_MAX_MODEL_CALLS=45 \
+    VISITOR_WINDOW_SECONDS=600 \
+    VISITOR_SESSIONS_PER_HOUR=10 \
+    GLOBAL_DAILY_MODEL_CALLS=1500 \
+    MAX_INPUT_CHARS=600 \
+    OPENAI_MAX_TOKENS=400 \
+    RATE_LIMIT_MAX_REQUESTS=6 \
+    SEED_ON_STARTUP=true \
+    CORS_ORIGINS='[]'
+
+# SQLite goes to /data when persistent storage is attached, else /tmp (ephemeral).
+USER app
+EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
+  CMD python -c "import urllib.request,os; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\",\"7860\")}/api/health')"
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --no-server-header"]

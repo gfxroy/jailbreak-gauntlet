@@ -47,3 +47,24 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  space-image:
+    # Builds the single-container production image and smoke-tests it (no API key: mock mode).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f Dockerfile.space -t jailbreak-gauntlet:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name jg -p 7860:7860 jailbreak-gauntlet:ci
+          for i in $(seq 1 30); do curl -fsS localhost:7860/api/health && break; sleep 2; done
+          curl -fsS localhost:7860/ | grep -q '<div id="root">'
+          curl -fsS localhost:7860/levels/3 | grep -q '<div id="root">'
+          curl -fsS localhost:7860/api/levels | grep -q '"id":8'
+          ! curl -fsS localhost:7860/docs | grep -qi swagger
+          ! curl -s localhost:7860/openapi.json | grep -q '"openapi"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:7860/api/admin/seed)" != 200
+          curl -fsS -X POST localhost:7860/api/sessions -H 'content-type: application/json' -d '{"nickname":"ci"}' | grep -q '"session_id"'
+          curl -fsS localhost:7860/api/research/summary | grep -q synthetic_attempts
+      - if: always()
+        run: docker logs jg || true
