@@ -10,20 +10,20 @@ export function Home() {
   const solved = levels?.filter((l) => l.solved).length ?? 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-end">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.25em] text-neon-400">
-            prompt-injection ctf · defense research harness
+          <p className="text-xs font-medium uppercase tracking-[0.1em] text-neutral-400">
+            Prompt-Injection CTF · Defense Research Harness
           </p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight xl:text-[3.25rem] xl:leading-[1.1]">
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white xl:text-[3.25rem] xl:leading-[1.1]">
             Eight guards. Eight passwords.
             <br />
-            <span className="text-ink-300">Every defense has a </span>
-            <span className="whitespace-nowrap text-neon-400 glow-text cursor-blink">blind spot</span>
+            <span className="text-neutral-400">Every defense has a </span>
+            <span className="text-white">blind spot.</span>
           </h1>
-          <p className="mt-4 max-w-2xl text-ink-300">
-            Each level wraps an AI guard in a real, well-known prompt-injection defense, from a
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-300">
+            Each level wraps an AI guard in a real prompt-injection defense, from a
             polite system prompt to a full defense-in-depth stack. Talk the guard into leaking its
             password, then learn exactly why the defense failed. Every attempt feeds the research
             dashboard.
@@ -31,16 +31,16 @@ export function Home() {
         </div>
         {session ? (
           <div className="panel p-5">
-            <p className="panel-title">operator</p>
-            <p className="mt-1 font-mono text-2xl text-neon-400">{session.nickname}</p>
+            <p className="panel-title">Operator</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{session.nickname}</p>
             <div className="mt-4 flex items-center gap-3">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-800">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-glow to-neon-400 transition-all"
+                  className="h-full rounded-full bg-white transition-all"
                   style={{ width: `${(solved / 8) * 100}%` }}
                 />
               </div>
-              <span className="font-mono text-sm text-ink-200">{solved}/8</span>
+              <span className="text-xs text-neutral-400 tabular-nums">{solved}/8 solved</span>
             </div>
           </div>
         ) : (

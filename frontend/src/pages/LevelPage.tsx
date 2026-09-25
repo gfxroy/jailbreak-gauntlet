@@ -113,41 +113,41 @@ export function LevelPage() {
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
         <div className="panel p-5">
-          <Link to="/" className="font-mono text-xs text-ink-400 hover:text-neon-400">
-            ← level map
+          <Link to="/" className="text-xs text-ink-400 hover:text-white transition">
+            ← Level map
           </Link>
-          <p className="mt-3 font-mono text-xs uppercase tracking-[0.2em] text-neon-400">
-            level {String(level.id).padStart(2, "0")} {level.solved && "· cleared"}
+          <p className="mt-3 text-xs font-medium uppercase tracking-wider text-ink-400">
+            Level {String(level.id).padStart(2, "0")} {level.solved && "· Cleared"}
           </p>
-          <h1 className="mt-1 text-2xl font-bold">{level.name}</h1>
-          <p className="mt-1 text-sm text-ink-300">{level.tagline}</p>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-center font-mono">
-            <div className="rounded-lg border border-ink-700 bg-ink-850 p-2">
-              <p className="text-2xl text-ink-100" data-testid="attempts">{attempts}</p>
-              <p className="text-[10px] uppercase tracking-wider text-ink-400">attempts</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{level.name}</h1>
+          <p className="mt-1 text-sm text-ink-300 leading-relaxed">{level.tagline}</p>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+              <p className="font-mono text-2xl font-semibold text-white" data-testid="attempts">{attempts}</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink-400 font-medium">Attempts</p>
             </div>
-            <div className="rounded-lg border border-ink-700 bg-ink-850 p-2">
-              <p className="text-2xl text-ink-100">{level.defenses.length}</p>
-              <p className="text-[10px] uppercase tracking-wider text-ink-400">layers</p>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+              <p className="font-mono text-2xl font-semibold text-white">{level.defenses.length}</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink-400 font-medium">Layers</p>
             </div>
           </div>
         </div>
 
         <div className="panel p-5">
-          <p className="panel-title mb-3">defense stack · guard {level.guard_name}</p>
+          <p className="panel-title mb-3">Defense stack · Guard {level.guard_name}</p>
           <DefenseStack defenses={level.defenses} tripped={lastCaught} />
           <button
-            className="mt-3 font-mono text-xs text-ink-400 hover:text-cyan-glow"
+            className="mt-3 text-xs text-ink-400 hover:text-white transition"
             onClick={() => setShowHint((s) => !s)}
           >
-            {showHint ? "▾ hide hint" : "▸ show hint"}
+            {showHint ? "▾ Hide hint" : "▸ Show hint"}
           </button>
-          {showHint && <p className="mt-2 text-sm text-cyan-glow/90">{level.hint}</p>}
+          {showHint && <p className="mt-2 text-xs leading-relaxed text-ink-200">{level.hint}</p>}
         </div>
 
         <form onSubmit={submitGuess} className="panel p-5">
-          <p className="panel-title mb-2 flex items-center gap-2">
-            <KeyIcon width={14} height={14} /> submit password
+          <p className="panel-title mb-2.5 flex items-center gap-2">
+            <KeyIcon width={14} height={14} /> Submit password
           </p>
           <div className="flex gap-2">
             <input
@@ -158,16 +158,16 @@ export function LevelPage() {
               onChange={(e) => setGuess(e.target.value)}
               aria-label="Password guess"
             />
-            <button className="btn-primary" disabled={!guess.trim()}>
+            <button className="btn-primary px-4" disabled={!guess.trim()}>
               Unlock
             </button>
           </div>
-          {guessFeedback && <p className="mt-2 font-mono text-xs text-alert-400">{guessFeedback}</p>}
+          {guessFeedback && <p className="mt-2 text-xs text-rose-400">{guessFeedback}</p>}
         </form>
 
         {level.solved && level.explainer && (
-          <div className="panel border-neon-400/30 p-5">
-            <p className="panel-title mb-2 text-neon-400">debrief · {level.explainer.defense}</p>
+          <div className="panel border-white/20 p-5">
+            <p className="panel-title mb-2 text-white">Debrief · {level.explainer.defense}</p>
             <p className="text-sm leading-relaxed text-ink-300">{level.explainer.why_it_failed}</p>
           </div>
         )}

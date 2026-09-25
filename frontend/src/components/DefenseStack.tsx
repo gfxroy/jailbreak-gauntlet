@@ -16,16 +16,16 @@ export function DefenseStack({ defenses, tripped }: Props) {
           <li
             key={d}
             className={clsx(
-              "flex items-center gap-2.5 rounded-md border px-2.5 py-1.5 font-mono text-xs transition",
+              "flex items-center gap-2.5 rounded-xl border px-3 py-2 text-xs font-sans transition-all duration-150",
               hit
-                ? "border-alert-400/60 bg-alert-400/10 text-alert-400"
-                : "border-ink-700 bg-ink-850/70 text-ink-200",
+                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                : "border-white/[0.06] bg-white/[0.02] text-ink-200",
             )}
             data-tripped={hit || undefined}
           >
-            <span className="text-ink-400">{String(i + 1).padStart(2, "0")}</span>
-            <ShieldIcon width={13} height={13} className={hit ? "text-alert-400" : "text-neon-400"} />
-            {d}
+            <span className="font-mono text-[10px] text-ink-400">{String(i + 1).padStart(2, "0")}</span>
+            <ShieldIcon width={13} height={13} className={hit ? "text-rose-400" : "text-neutral-400"} />
+            <span className="font-medium">{d}</span>
           </li>
         );
       })}

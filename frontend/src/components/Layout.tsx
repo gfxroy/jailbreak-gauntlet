@@ -19,18 +19,18 @@ export function Layout() {
   const demo = health?.provider === "mock";
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-ink-700/70 bg-ink-950/80 backdrop-blur-md">
+    <div className="min-h-screen bg-black text-ink-100">
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-black/80 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-5">
           <NavLink to="/" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg border border-neon-400/40 bg-neon-400/10 text-neon-400">
+            <span className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white">
               <ShieldIcon width={16} height={16} />
             </span>
-            <span className="font-mono text-sm font-semibold tracking-tight">
-              jailbreak<span className="text-neon-400">_</span>gauntlet
+            <span className="text-sm font-semibold tracking-tight text-white">
+              Jailbreak Gauntlet
             </span>
           </NavLink>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] p-0.5 text-xs font-medium">
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -38,41 +38,36 @@ export function Layout() {
                 end={end}
                 className={({ isActive }) =>
                   clsx(
-                    "flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-xs transition",
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all duration-150",
                     isActive
-                      ? "bg-ink-800 text-neon-400"
-                      : "text-ink-300 hover:bg-ink-850 hover:text-ink-100",
+                      ? "bg-white/15 text-white shadow-sm font-medium"
+                      : "text-ink-400 hover:text-white",
                   )
                 }
               >
-                <Icon width={15} height={15} />
+                <Icon width={14} height={14} />
                 {label}
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-3 font-mono text-xs">
+          <div className="ml-auto flex items-center gap-3 text-xs">
             {health && (
               <span
-                className={clsx(
-                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-                  demo
-                    ? "border-amber-glow/40 text-amber-glow"
-                    : "border-neon-400/40 text-neon-400",
-                )}
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-ink-300 font-normal"
                 title={demo ? "Offline mock guard" : health.model ?? ""}
               >
                 <span
                   className={clsx(
                     "h-1.5 w-1.5 rounded-full",
-                    demo ? "bg-amber-glow" : "bg-neon-400",
+                    demo ? "bg-amber-400/80" : "bg-emerald-400/80",
                   )}
                 />
-                {demo ? "DEMO MODE · mock guard" : `LIVE · ${health.model}`}
+                {demo ? "Demo · mock guard" : `Live · ${health.model}`}
               </span>
             )}
             {STATIC && <ModelMenu />}
             {session && (
-              <button onClick={reset} className="text-ink-400 hover:text-alert-400" title="Start over">
+              <button onClick={reset} className="text-ink-400 hover:text-white transition" title="Start over">
                 {session.nickname} · reset
               </button>
             )}
@@ -80,18 +75,15 @@ export function Layout() {
         </div>
       </header>
       {STATIC && (
-        <div className="border-b border-amber-glow/20 bg-amber-glow/5 px-5 py-2 text-center font-mono text-[11px] text-amber-glow">
-          Static edition: everything runs in your browser, so the passwords are visible in devtools
-          and stats are stored only in this browser. It's for play and learning. The{" "}
-          <a className="underline" href="https://github.com/gfxroy/jailbreak-gauntlet#quickstart">server version</a> keeps secrets server-side.
+        <div className="border-b border-white/[0.08] bg-white/[0.02] px-5 py-2 text-center text-xs text-ink-400">
+          Static edition: runs entirely in your browser for safety research. Passwords and stats remain local to this device.
         </div>
       )}
       <main className="mx-auto max-w-7xl px-5 py-8">
         <Outlet />
       </main>
-      <footer className="mx-auto max-w-7xl px-5 pb-10 pt-4 font-mono text-[11px] text-ink-400">
-        Educational use only. Test prompt-injection techniques only against systems you own or
-        are authorised to assess.
+      <footer className="mx-auto max-w-7xl px-5 pb-10 pt-4 text-xs text-ink-400">
+        Educational and research use only.
       </footer>
     </div>
   );
