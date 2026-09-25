@@ -8,7 +8,7 @@ simulation only - they are NOT measurements of real attackers or real models.
 
 All rows are flagged ``synthetic=True`` and nicknames are prefixed ``synth_``.
 
-    python -m scripts.seed --players 60 --days 14
+    python -m scripts.seed --players 80 --days 14
     python -m scripts.seed --reset            # delete existing synthetic rows first
 """
 
@@ -165,7 +165,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--players", type=int, default=60)
+    parser.add_argument("--players", type=int, default=80)
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--reset", action="store_true", help="delete existing synthetic rows")
