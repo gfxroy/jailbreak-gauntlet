@@ -9,6 +9,7 @@ hardened prompts, input and output filters, an LLM judge, canary tokens, a dual-
 and finally all of them stacked. Your job is to get the password out anyway, then read why the
 defense failed.
 
+[![CI](https://github.com/gfxroy/jailbreak-gauntlet/actions/workflows/ci.yml/badge.svg)](https://github.com/gfxroy/jailbreak-gauntlet/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688)
 ![React](https://img.shields.io/badge/React-19%20%2B%20TypeScript-61dafb)
@@ -323,7 +324,7 @@ Some examples of what's covered: the output filter catches base64, hex, ROT13, N
 and spaced-out secrets; the input filter catches Cyrillic homoglyphs, zero-width characters and
 leetspeak but (by design) not synonyms; the judge fails closed on bad JSON; the dual-LLM's
 privileged model never receives the raw input; the leak tracker blocks the reply that would go
-over budget; the export redacts secrets; locked levels return 403.
+over budget; the export redacts secrets; locked levels return 403. CI runs all of it on every push.
 
 ## Project structure
 
