@@ -189,7 +189,7 @@ sequenceDiagram
 | | Demo mode (default) | Live mode |
 |---|---|---|
 | Trigger | no `OPENAI_API_KEY` | `OPENAI_API_KEY` set (or `PROVIDER=openai`) |
-| Guard / judge / quarantine | deterministic rule-based mock | OpenAI chat model (`OPENAI_MODEL`, optional `OPENAI_JUDGE_MODEL`) |
+| Guard / judge / quarantine | deterministic rule-based mock | OpenAI or any OpenAI-compatible model, e.g. Gemini ([see below](#using-other-providers-eg-gemini)) |
 | Cost | free, offline | normal API pricing |
 | Behaviour | caves to overrides with a naive prompt; with a hardened prompt, refuses direct asks but helps with spelling, encoding, acrostic, rhyme and letter-extraction games; the judge misses short fragments and rhymes | whatever the real model does. Expect different (often harder) behaviour and different bypasses |
 
@@ -264,18 +264,73 @@ npm run dev
 
 ### Configuration
 
-All settings are environment variables (or `backend/.env`); see [`.env.example`](.env.example).
+All settings are environment variables (or `backend/.env`); [`.env.example`](.env.example)
+lists every option. The important ones:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `OPENAI_API_KEY` | empty | Enables live mode |
-| `PROVIDER` | `auto` | `auto`, `openai` or `mock` |
-| `OPENAI_MODEL` | `gpt-4.1-mini` | Guard / quarantine model |
-| `OPENAI_JUDGE_MODEL` | same as above | Judge + labeler model |
-| `OPENAI_BASE_URL` | empty | Any OpenAI-compatible endpoint |
+| `OPENAI_API_KEY` | empty | Enables live mode (bring your own key) |
+| `OPENAI_BASE_URL` | empty (OpenAI) | Any OpenAI-compatible endpoint, e.g. Gemini (see below) |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | Guard (privileged) model |
+| `OPENAI_JUDGE_MODEL` / `OPENAI_QUARANTINE_MODEL` / `OPENAI_LABELER_MODEL` | guard model (labeler: judge model) | Per-role models |
+| `OPENAI_REASONING_EFFORT` | empty | Forwarded as `reasoning_effort` (e.g. `none` for Gemini 2.5) |
+| `OPENAI_MAX_TOKENS` / `OPENAI_JSON_MODE` / `OPENAI_MAX_RETRIES` | `800` / `true` / `4` | Output cap, JSON mode for judge/parser/labeler, retries |
 | `CLASSIFIER_USE_LLM` | `false` | Merge LLM technique labels with the heuristics |
-| `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | `6` / `60` | Level 8 rate limit |
-| `DATABASE_URL` | `sqlite:///./gauntlet.db` | SQLAlchemy URL |
+| `APP_ENV` | `development` | `production` disables `/docs` and admin endpoints |
+| `USAGE_LIMITS` + `VISITOR_*` / `GLOBAL_DAILY_MODEL_CALLS` | `auto`, 15 msgs & 60 model calls / 10 min, 2000/day | Per-visitor and global limits for public demos |
+| `MAX_INPUT_CHARS` | `1000` | Server-side cap on message length |
+| `DATABASE_URL` | `./gauntlet.db` (dev), `/data` or `/tmp` (prod) | SQLAlchemy URL |
+
+### Using other providers (e.g. Gemini)
+
+The OpenAI provider talks to any **OpenAI-compatible Chat Completions** endpoint, so you
+can point it at Gemini, a local vLLM/Ollama server, or a proxy. Keys are only ever read from
+the environment. For Google Gemini ([OpenAI compatibility docs](https://ai.google.dev/gemini-api/docs/openai)):
+
+```bash
+export OPENAI_API_KEY="$GEMINI_API_KEY"   # your own key from Google AI Studio
+export OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export OPENAI_MODEL=gemini-2.5-flash
+export OPENAI_JUDGE_MODEL=gemini-2.5-flash-lite   # optional: cheaper judge/labeler
+export OPENAI_REASONING_EFFORT=none               # skip "thinking" so replies fit the token cap
+uvicorn app.main:app --port 8000
+```
+
+What the provider layer handles for you:
+
+- **Per-role models:** guard, judge, quarantine parser and labeler can each use a different model.
+- **Parameter differences:** `max_completion_tokens` for api.openai.com, `max_tokens` for
+  compatible endpoints; optional `reasoning_effort`; JSON mode can be switched off
+  (`OPENAI_JSON_MODE=false`) for endpoints that don't support `response_format`.
+- **Messy JSON:** judge, parser and labeler outputs are parsed leniently (code fences, prose
+  around the object). An unparseable judge verdict still **fails closed**.
+- **Transient failures:** 429/5xx/timeouts are retried with exponential backoff (SDK retries
+  plus an outer retry). Empty completions are retried too. If the backend stays down,
+  the player gets a friendly 503 and nothing is logged as an attempt.
+
+`python -m scripts.live_playtest` (in `backend/`) plays scripted attacks through all 8
+levels against whatever provider is configured, masks secrets in its output, and prints a
+per-level summary. It's the quickest way to check a new model or endpoint.
+
+## Deploying a public demo (Hugging Face Spaces)
+
+[`Dockerfile.space`](Dockerfile.space) builds a **single container**: the React build is
+served by FastAPI next to the API on port **7860**. Deployment steps, secrets and the Space
+front-matter (kept separately in [`deploy/huggingface/`](deploy/huggingface/)) are in
+[`deploy/huggingface/DEPLOY.md`](deploy/huggingface/DEPLOY.md). In production mode:
+
+- **Per-visitor limits** (client IP from `X-Forwarded-For` behind `TRUSTED_PROXY_HOPS`
+  proxies): 15 messages and 45 model calls per 10 minutes by default. Judge, parser and
+  labeler calls count. There is also a **global daily cap** on model calls and a limit on
+  new sessions per hour. Visitors get a friendly message in the chat plus a `Retry-After` header.
+- **Hard caps:** message length (`MAX_INPUT_CHARS`) and output tokens (`OPENAI_MAX_TOKENS`).
+- **Safe public data:** the JSONL export redacts level secrets (several encodings), emails,
+  URLs, IPs, phone and card numbers and credential-like strings, and replaces session ids with
+  salted hashes. IPs are kept only in memory, never written to the database.
+- **No admin surface:** `/docs`, `/openapi.json` and the dev-only admin endpoints
+  (seed/wipe synthetic data) are disabled.
+- **Ephemeral-friendly storage:** SQLite lives in `/data` if persistent storage is attached,
+  else `/tmp`. `SEED_ON_STARTUP=true` re-creates the labelled synthetic sample on boot.
 
 ## Adding a defense or a level
 
@@ -314,7 +369,7 @@ All settings are environment variables (or `backend/.env`); see [`.env.example`]
 ## Tests
 
 ```bash
-cd backend && pytest -q          # 113 tests: every defense, all 8 level pipelines, classifier, API, seeder
+cd backend && pytest -q          # 149 tests: defenses, level pipelines, classifier, API, providers, limits, prod mode
 cd backend && ruff check . && ruff format --check . && mypy app   # strict mypy
 cd frontend && npm test          # vitest: heatmap, defense stack, chat window, helpers
 cd frontend && npm run lint && npm run build
@@ -336,30 +391,38 @@ backend/
     services/      # game orchestration, research aggregations/export
     levels.py      # the 8 levels: defense stacks, hints, explainers
     classifier.py  # attack-technique heuristics + optional LLM labeler
-    api.py, main.py, models.py, schemas.py
-  scripts/seed.py  # synthetic dataset generator
+    limits.py      # per-visitor / global usage limits, metered provider
+    api.py, main.py, admin.py, models.py, schemas.py
+  scripts/seed.py            # synthetic dataset generator
+  scripts/live_playtest.py   # scripted run of all levels against a real provider
   tests/
 frontend/src/
   pages/           # Home (level map), LevelPage, Dashboard, Leaderboard, About
   components/      # ChatWindow, DefenseStack, Heatmap, ExplainerModal, ...
 scripts/capture_screenshots.py   # Playwright screenshots + GIF for this README
+Dockerfile.space                 # single-container production image (port 7860)
+deploy/huggingface/              # Space front-matter README + deployment guide
 ```
 
 ## Limitations
 
 - **Live mode has not been benchmarked here.** The level designs, tests and screenshots all use
-  the mock. With a real model the difficulty curve will be different, and some levels may be much
-  harder or easier than intended.
+  the mock. The OpenAI-compatible path (including Gemini) is covered by unit tests with stubbed
+  clients, not by a recorded live run. With a real model the difficulty curve will be different;
+  use `scripts/live_playtest.py` to measure it.
+- **The Docker image hasn't been built in CI.** The production setup (built frontend served by
+  FastAPI on port 7860, prod env) was tested by running it directly, not inside the container.
 - **The mock is scripted.** It reproduces known failure modes on purpose and can be beaten with
   specific phrasings. It's meant for development and demos, not as a model of real behaviour.
 - **Heuristic labels are approximate.** The technique classifier is regex-based (with an optional
   LLM pass). Expect some mislabels on creative prompts.
 - **String-based leak detection** (output filter, leak tracker) is conservative and heuristic. It
   can over-count ambiguous fragments and miss novel encodings.
-- **Single-process state:** the per-session throttle is in memory, and SQLite with synchronous DB
-  calls is fine for a demo but not for heavy concurrent traffic.
+- **Single-process state:** the usage limits and throttles are in memory (run one replica),
+  and SQLite with synchronous DB calls is fine for a demo but not for heavy concurrent traffic.
 - **No authentication.** Sessions are anonymous bearer ids in `localStorage`. The dashboard and
-  export are public by design for a local research tool, so add auth before exposing it publicly.
+  export are public by design. Production mode redacts the export and rate-limits visitors,
+  but PII redaction is best-effort pattern matching.
 
 ## Roadmap
 
