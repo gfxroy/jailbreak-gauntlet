@@ -11,6 +11,8 @@ export interface ChatTurn {
   caughtBy?: string | null;
   outcome?: Outcome;
   techniques?: string[];
+  /** System notice (rate limit, outage) rather than a guard reply. */
+  notice?: boolean;
 }
 
 interface Props {
@@ -86,12 +88,14 @@ export function ChatWindow({ guardName, turns, onSend, disabled }: Props) {
                   className={clsx(
                     "min-w-0 flex-1 rounded-md",
                     t.blocked && "border border-alert-400/30 bg-alert-400/5 px-2.5 py-1.5",
+                    t.notice && "border border-amber-glow/40 bg-amber-glow/5 px-2.5 py-1.5",
                   )}
+                  role={t.notice ? "status" : undefined}
                 >
                   <p
                     className={clsx(
                       "whitespace-pre-wrap break-words",
-                      t.blocked ? "text-alert-400" : "text-ink-200",
+                      t.blocked ? "text-alert-400" : t.notice ? "text-amber-glow" : "text-ink-200",
                     )}
                   >
                     {t.response}
@@ -120,7 +124,7 @@ export function ChatWindow({ guardName, turns, onSend, disabled }: Props) {
           className="input"
           placeholder="Type your attack…"
           value={draft}
-          maxLength={2000}
+          maxLength={1000}
           onChange={(e) => setDraft(e.target.value)}
           aria-label="Message"
           disabled={disabled}

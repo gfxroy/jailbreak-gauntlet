@@ -24,6 +24,7 @@ from sqlmodel import Session, delete, select
 from app.config import Settings, get_settings
 from app.db import init_db, make_engine
 from app.levels import MAX_LEVEL
+from app.limits import LimitConfig, UsageLimiter
 from app.models import Attempt, GameSession, LevelProgress, Outcome
 from app.providers.mock_provider import MockProvider
 from app.services.game import GameService
@@ -135,7 +136,7 @@ async def simulate(
 
 
 def reset_synthetic(settings: Settings) -> None:
-    engine = make_engine(settings.database_url)
+    engine = make_engine(settings.resolved_database_url)
     init_db(engine)
     with Session(engine) as db:
         ids = [g.id for g in db.exec(select(GameSession).where(GameSession.synthetic == True))]  # noqa: E712
@@ -150,14 +151,16 @@ def run(players: int, days: int, seed: int, reset: bool, settings: Settings | No
     settings = settings or get_settings()
     if reset:
         reset_synthetic(settings)
-    engine = make_engine(settings.database_url)
+    engine = make_engine(settings.resolved_database_url)
     init_db(engine)
     # Always the mock: synthetic data must never burn API credits or mix providers.
-    service = GameService(engine, MockProvider(), settings)
+    service = GameService(
+        engine, MockProvider(), settings, limiter=UsageLimiter(LimitConfig(enabled=False))
+    )
     service.throttle.max_requests = 10**9
     n_players, n_attempts = asyncio.run(simulate(service, random.Random(seed), players, days))
     print(
-        f"Seeded {n_players} synthetic players / {n_attempts} attempts into {settings.database_url}"
+        f"Seeded {n_players} synthetic players / {n_attempts} attempts into {settings.resolved_database_url}"
     )
 
 

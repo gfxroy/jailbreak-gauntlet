@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import re
+import secrets as secrets_mod
 from collections import Counter, defaultdict
 from collections.abc import Iterator
 from typing import Any
@@ -18,6 +19,8 @@ from app.levels import LEVELS
 from app.models import Attempt, GameSession, LevelProgress, Outcome
 
 BYPASS = {Outcome.LEAKED, Outcome.PARTIAL_LEAK}
+# Per-process salt so exported session hashes can't be linked to session ids.
+_SALT = secrets_mod.token_hex(16)
 
 
 def _attempts(db: Session, include_synthetic: bool) -> list[Attempt]:
@@ -164,6 +167,25 @@ def leaderboard(
     return out
 
 
+_PII_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("[EMAIL]", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
+    ("[URL]", re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)),
+    # API keys / tokens: long unbroken runs of key-ish characters, and known prefixes.
+    ("[KEY]", re.compile(r"\b(?:sk|pk|rk|ghp|gho|xox[abp]|AIza|hf)[-_A-Za-z0-9]{12,}")),
+    ("[KEY]", re.compile(r"\b[A-Za-z0-9_\-]{32,}\b")),
+    ("[IP]", re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")),
+    ("[CARD]", re.compile(r"\b(?:\d[ -]?){13,19}\b")),
+    ("[PHONE]", re.compile(r"(?<!\w)\+?\d[\d\s().-]{7,}\d(?!\w)")),
+)
+
+
+def redact_pii(text: str) -> str:
+    """Scrub common personal data and credentials from free text (best effort)."""
+    for placeholder, pattern in _PII_PATTERNS:
+        text = pattern.sub(placeholder, text)
+    return text
+
+
 def _redact(text: str, secret: str) -> str:
     variants = {secret, secret[::-1], base64.b64encode(secret.encode()).decode()}
     for v in variants:
@@ -173,21 +195,28 @@ def _redact(text: str, secret: str) -> str:
 
 
 def export_jsonl(engine: Engine, *, include_synthetic: bool = True) -> Iterator[str]:
-    """Yield one JSON object per attempt. Secrets are redacted, session ids hashed."""
+    """Yield one JSON object per attempt.
+
+    Safe to publish: level secrets (in several encodings), emails, URLs, IPs, phone and
+    card numbers and credential-like strings are redacted; session ids are replaced by a
+    salted hash; nicknames and latencies are omitted. Client IPs are never stored at all.
+    """
     with Session(engine) as db:
         secrets = {g.id: g.secrets for g in db.exec(select(GameSession)).all()}
         attempts = _attempts(db, include_synthetic)
     for a in attempts:
         secret = secrets.get(a.session_id, {}).get(str(a.level), "")
+        prompt = _redact(a.prompt, secret) if secret else a.prompt
+        response = _redact(a.response, secret) if secret else a.response
         record = {
             "id": a.id,
-            "session": hashlib.sha256(a.session_id.encode()).hexdigest()[:12],
+            "session": hashlib.sha256((_SALT + a.session_id).encode()).hexdigest()[:12],
             "level": a.level,
-            "prompt": _redact(a.prompt, secret) if secret else a.prompt,
-            "response": _redact(a.response, secret) if secret else a.response,
+            "prompt": redact_pii(prompt),
+            "response": redact_pii(response),
             "outcome": a.outcome.value,
             "caught_by": a.caught_by,
-            "block_reason": a.block_reason,
+            "block_reason": redact_pii(a.block_reason) if a.block_reason else None,
             "model_leaked": a.model_leaked,
             "techniques": a.techniques,
             "provider": a.provider,

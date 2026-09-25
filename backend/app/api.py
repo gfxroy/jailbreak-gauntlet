@@ -40,22 +40,40 @@ Game = Annotated[GameService, Depends(get_game)]
 
 
 def _raise(exc: GameError) -> HTTPException:
-    return HTTPException(status_code=exc.status_code, detail=str(exc))
+    headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after else None
+    return HTTPException(status_code=exc.status_code, detail=str(exc), headers=headers)
+
+
+def client_ip(request: Request) -> str:
+    """Visitor identity for rate limiting.
+
+    Behind N trusted reverse proxies, the client is the N-th entry from the right of
+    X-Forwarded-For (entries further left are client-controlled and spoofable).
+    """
+    hops: int = request.app.state.game.settings.trusted_proxy_hops
+    if hops > 0:
+        forwarded = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",")]
+        forwarded = [p for p in forwarded if p]
+        if len(forwarded) >= hops:
+            return str(forwarded[-hops])
+    return request.client.host if request.client else "unknown"
 
 
 @router.get("/health", response_model=HealthResponse)
 def health(game: Game) -> HealthResponse:
-    is_openai = game.provider.name == "openai"
     return HealthResponse(
         status="ok",
         provider=game.provider.name,
-        model=game.settings.openai_model if is_openai else None,
+        model=getattr(game.provider, "model", None),
     )
 
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
-def new_session(body: NewSessionRequest, game: Game) -> SessionResponse:
-    session = game.create_session(body.nickname)
+def new_session(body: NewSessionRequest, game: Game, request: Request) -> SessionResponse:
+    try:
+        session = game.create_session(body.nickname, client_ip=client_ip(request))
+    except GameError as exc:
+        raise _raise(exc) from None
     return SessionResponse(
         session_id=session.id, nickname=session.nickname, provider=game.provider.name
     )
@@ -86,10 +104,10 @@ def list_levels(game: Game, session_id: OptionalSession = None) -> list[LevelOut
 
 @router.post("/levels/{level_id}/chat", response_model=ChatResponse)
 async def chat(
-    level_id: int, body: ChatRequest, game: Game, session_id: SessionHeader
+    level_id: int, body: ChatRequest, game: Game, session_id: SessionHeader, request: Request
 ) -> ChatResponse:
     try:
-        result = await game.chat(session_id, level_id, body.message)
+        result = await game.chat(session_id, level_id, body.message, client_ip=client_ip(request))
     except GameError as exc:
         raise _raise(exc) from None
     return ChatResponse(

@@ -80,8 +80,16 @@ export function LevelPage() {
         },
       ]);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Request failed";
-      setTurns((prev) => [...prev.slice(0, -1), { prompt: message, response: `⚠ ${msg}`, blocked: true }]);
+      const status = err instanceof ApiError ? err.status : 0;
+      const detail = err instanceof ApiError ? err.message : "Network error - is the backend running?";
+      const text =
+        status === 429
+          ? `⏳ ${detail}`
+          : status === 503
+            ? `⚠ ${detail}`
+            : `⚠ ${detail || "Request failed"}`;
+      // Not an attempt: nothing was logged server-side, so show it as a system notice.
+      setTurns((prev) => [...prev.slice(0, -1), { prompt: message, response: text, notice: true }]);
     } finally {
       setBusy(false);
     }

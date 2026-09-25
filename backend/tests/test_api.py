@@ -108,3 +108,26 @@ def test_export_redacts_secrets(client):
     assert "[REDACTED]" in rows[0]["response"]
     assert secret_for(client, h, 1) not in r.text.upper()
     assert h["X-Session-Id"] not in r.text
+
+
+def test_provider_outage_returns_503_and_logs_nothing(client):
+    from app.providers.base import ProviderError
+
+    class Down:
+        name = "openai"
+        model = "down-model"
+
+        async def complete(self, *a, **kw):
+            raise ProviderError("HTTP 503 from down-model")
+
+    game = client.app.state.game  # type: ignore[attr-defined]
+    game.provider = Down()
+    h = start(client)
+    r = client.post("/api/levels/1/chat", json={"message": "hi"}, headers=h)
+    assert r.status_code == 503 and "unavailable" in r.json()["detail"]
+    assert client.get("/api/levels/1/transcript", headers=h).json() == []
+    assert client.get("/api/health").json() == {
+        "status": "ok",
+        "provider": "openai",
+        "model": "down-model",
+    }

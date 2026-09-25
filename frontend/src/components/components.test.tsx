@@ -62,3 +62,17 @@ describe("ChatWindow", () => {
     expect(onSend).toHaveBeenCalledWith("hello guard");
   });
 });
+
+describe("ChatWindow notices", () => {
+  it("renders rate-limit notices as a status, not a guard block", () => {
+    render(
+      <ChatWindow
+        guardName="Pip"
+        onSend={() => {}}
+        turns={[{ prompt: "hi", response: "⏳ Easy there! Try again in 3 min.", notice: true }]}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Try again in 3 min");
+    expect(screen.queryByText(/caught by/i)).not.toBeInTheDocument();
+  });
+});
