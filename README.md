@@ -410,8 +410,8 @@ deploy/huggingface/              # Space front-matter README + deployment guide
   the mock. The OpenAI-compatible path (including Gemini) is covered by unit tests with stubbed
   clients, not by a recorded live run. With a real model the difficulty curve will be different;
   use `scripts/live_playtest.py` to measure it.
-- **The Docker image hasn't been built in CI.** The production setup (built frontend served by
-  FastAPI on port 7860, prod env) was tested by running it directly, not inside the container.
+- **The Space image is smoke-tested in mock mode only.** CI builds `Dockerfile.space` and checks
+  the SPA, API, disabled docs/admin and sessions without an API key. It doesn't exercise a real model.
 - **The mock is scripted.** It reproduces known failure modes on purpose and can be beaten with
   specific phrasings. It's meant for development and demos, not as a model of real behaviour.
 - **Heuristic labels are approximate.** The technique classifier is regex-based (with an optional
