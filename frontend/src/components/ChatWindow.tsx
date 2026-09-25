@@ -56,7 +56,7 @@ export function ChatWindow({ guardName, turns, onSend, disabled }: Props) {
           </p>
         )}
         {turns.map((t, i) => (
-          <div key={i} className="space-y-2" data-turn>
+          <div key={i} className="space-y-2" data-turn data-outcome={t.outcome ?? undefined}>
             <div className="flex gap-2">
               <span className="select-none text-cyan-glow">you&gt;</span>
               <div className="min-w-0 flex-1">

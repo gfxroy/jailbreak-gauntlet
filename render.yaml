@@ -1,0 +1,40 @@
+# Render Blueprint: single free web service built from Dockerfile.space.
+# Render injects PORT; the image's CMD honours it (defaults to 7860).
+# OPENAI_API_KEY is a secret you enter in the dashboard (sync: false); leave it empty
+# to run the offline demo guard.
+services:
+  - type: web
+    name: jailbreak-gauntlet
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.space
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: OPENAI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: OPENAI_FALLBACK_MODELS
+        value: gemini-flash-lite-latest
+      - key: OPENAI_REASONING_EFFORT
+        value: minimal
+      - key: APP_ENV
+        value: production
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: VISITOR_MAX_MESSAGES
+        value: "15"
+      - key: VISITOR_MAX_MODEL_CALLS
+        value: "45"
+      - key: GLOBAL_DAILY_MODEL_CALLS
+        value: "1000"
+      - key: MAX_INPUT_CHARS
+        value: "600"
+      - key: OPENAI_MAX_TOKENS
+        value: "400"
+      - key: SEED_ON_STARTUP
+        value: "true"
